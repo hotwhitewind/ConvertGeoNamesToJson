@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "ConvertGeoNamesDBToMongoDB": {
+      "commandName": "Project",
+      "commandLineArgs": "c:\\Project\\WORK_TO_GIT\\ConvertGeoNamesDBToMongoDB\\ConvertGeoNamesDBToMongoDB\\bin\\Debug\\netcoreapp3.1\\data"
+    }
+  }
+}
