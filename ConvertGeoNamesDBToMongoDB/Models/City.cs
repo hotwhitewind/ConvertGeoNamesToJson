@@ -7,7 +7,6 @@ namespace ConvertGeoNamesDBToMongoDB.Models
     [Serializable]
     public class City
     {
-        public int Id { get; set; }
         public string CityAsciiName { get; set; }
         public string CityName { get; set; }
         public double Latitude { get; set; }

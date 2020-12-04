@@ -10,11 +10,19 @@ namespace ConvertGeoNamesDBToMongoDB
         {
             if (args.Length == 0)
             {
-                Console.WriteLine("usage: programm.exe initDbDirecotry");
+                Console.WriteLine("usage: programm.exe initDbDirectory [citiesDBName]");
                 return;
             }
+
             string initDirectory = args[0];
+            string citiesDBName = string.Empty;
+            if (args.Length == 2)
+                citiesDBName = args[1];
             DBConverter converter = new DBConverter(initDirectory);
+            if(!string.IsNullOrEmpty(citiesDBName))
+            {
+                converter.SetCitiesDBName(citiesDBName);
+            }
             Console.WriteLine("Work begin");
             await converter.CreateJsonFromDBFiles();
         }

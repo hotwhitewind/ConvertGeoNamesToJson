@@ -13,6 +13,7 @@ namespace ConvertGeoNamesDBToMongoDB.Converter
     public class DBConverter
     {
         private string _dbDirectory;
+        private string _citiesDBName = "cities500.txt";
 
         public DBConverter(string dbDirectory)
         {
@@ -22,7 +23,6 @@ namespace ConvertGeoNamesDBToMongoDB.Converter
             }
             if(!File.Exists($"{dbDirectory}/admin1CodesASCII.txt") ||
                 !File.Exists($"{dbDirectory}/admin2Codes.txt") ||
-                !File.Exists($"{dbDirectory}/cities500.txt") ||
                 !File.Exists($"{dbDirectory}/countryInfo.txt"))
             {
                 throw new Exception("Not all need DB files exist");
@@ -30,8 +30,17 @@ namespace ConvertGeoNamesDBToMongoDB.Converter
             _dbDirectory = dbDirectory;
         }
 
+        public void SetCitiesDBName(string name)
+        {
+            _citiesDBName = name;
+        }
         public async Task CreateJsonFromDBFiles()
         {
+            if (!File.Exists($"{_dbDirectory}/{_citiesDBName}"))
+            {
+                Console.WriteLine("Cities DB file not found!!!");
+                return;
+            }
             //подготовим промежуточные данные
             Dictionary<string, Country> countryMap = new Dictionary<string, Country>();
             Dictionary<string, State> stateMap = new Dictionary<string, State>();
@@ -51,11 +60,10 @@ namespace ConvertGeoNamesDBToMongoDB.Converter
                             var tables = currentCountry.Split('\t');
                             countryMap.Add(tables[0], new Country
                             {
-                                Id = primaryIndex++,
                                 CountryISOCode = tables[0],
                                 CountryName = tables[4],
-                                States = new List<State>(),
-                                Cities = new List<City>()
+                                //States = new List<State>(),
+                                //Cities = new List<City>()
                             });
                         }
                     } while (!string.IsNullOrEmpty(currentCountry));
@@ -75,12 +83,11 @@ namespace ConvertGeoNamesDBToMongoDB.Converter
                             var tables = currentState.Split('\t');
                             stateMap.Add(tables[0], new State
                             {
-                                Id = primaryIndex++,
                                 StateCode = tables[0].Split('.')[1],
-                                StateName = tables[1],
+                                StateName = tables[2],
                                 StateAsciiName = tables[2],
-                                Districts = new List<District>(),
-                                Cities = new List<City>()
+                                //Districts = new List<District>(),
+                                //Cities = new List<City>()
                             });
                         }
                     } while (!string.IsNullOrEmpty(currentState));
@@ -100,11 +107,10 @@ namespace ConvertGeoNamesDBToMongoDB.Converter
                             var tables = currentDistrict.Split('\t');
                             districtMap.Add(tables[0], new District
                             {
-                                Id = primaryIndex++,
                                 DistrictCode = tables[0].Split('.')[2],
-                                DistrictName = tables[1],
+                                DistrictName = tables[2],
                                 DistrictAsciiName = tables[2],
-                                Cities = new List<City>()
+                                //Cities = new List<City>()
                             });
                         }
                     } while (!string.IsNullOrEmpty(currentDistrict));
@@ -116,7 +122,7 @@ namespace ConvertGeoNamesDBToMongoDB.Converter
             dBModel.Countries = new List<Country>();
             var separator = System.Globalization.CultureInfo.CurrentCulture.NumberFormat.CurrencyDecimalSeparator[0];
             
-            using (var file = new FileStream($"{_dbDirectory}/cities500.txt", FileMode.Open, FileAccess.Read))
+            using (var file = new FileStream($"{_dbDirectory}/{_citiesDBName}", FileMode.Open, FileAccess.Read))
             {
                 using (var reader = new StreamReader(file))
                 {
@@ -132,8 +138,7 @@ namespace ConvertGeoNamesDBToMongoDB.Converter
                             {
                                 City newCity = new City
                                 {
-                                    Id = primaryIndex++,
-                                    CityName = tables[1],
+                                    CityName = tables[2],
                                     CityAsciiName = tables[2],
                                     Latitude = Convert.ToDouble(tables[4].Replace('.', separator)),
                                     Longitude = Convert.ToDouble(tables[5].Replace('.', separator)),
@@ -158,6 +163,10 @@ namespace ConvertGeoNamesDBToMongoDB.Converter
                                         //ищем область или штат
                                         if (stateMap.ContainsKey($"{newCity.CountryCode}.{newCity.AdminCode1}"))
                                         {
+                                            if(country.States == null)
+                                            {
+                                                country.States = new List<State>();
+                                            }
                                             var state = country.States.Where(c => c.StateCode == newCity.AdminCode1).FirstOrDefault();
                                             if(state == null)
                                             {
@@ -170,6 +179,8 @@ namespace ConvertGeoNamesDBToMongoDB.Converter
                                                 //город относится к району, найдем район
                                                 if (districtMap.ContainsKey($"{newCity.CountryCode}.{newCity.AdminCode1}.{newCity.AdminCode2}"))
                                                 {
+                                                    if (state.Districts == null)
+                                                        state.Districts = new List<District>();
                                                     var district = state.Districts.Where(c => c.DistrictCode == newCity.AdminCode2).FirstOrDefault();
                                                     if(district == null)
                                                     {
@@ -178,12 +189,16 @@ namespace ConvertGeoNamesDBToMongoDB.Converter
                                                         district = districtMap[$"{newCity.CountryCode}.{newCity.AdminCode1}.{newCity.AdminCode2}"];
                                                     }
                                                     //добавим город в район
+                                                    if (district.Cities == null)
+                                                        district.Cities = new List<City>();
                                                     district.Cities.Add(newCity);
                                                 }    
                                             }
                                             else
                                             {
                                                 //город относится к области просто добавим в область
+                                                if (state.Cities == null)
+                                                    state.Cities = new List<City>();
                                                 state.Cities.Add(newCity);
                                             }
                                         }
@@ -192,6 +207,8 @@ namespace ConvertGeoNamesDBToMongoDB.Converter
                                     {
                                         //город не относится к штату или области
                                         //просто добавим в список страны
+                                        if (country.Cities == null)
+                                            country.Cities = new List<City>();
                                         country.Cities.Add(newCity);
                                     }
 
@@ -206,10 +223,11 @@ namespace ConvertGeoNamesDBToMongoDB.Converter
                     } while (!string.IsNullOrEmpty(currentCity));
                 }
             }
-            using (FileStream fs = new FileStream("resultDB.json", FileMode.OpenOrCreate))
+            using (FileStream fs = new FileStream("resultDB.json", FileMode.Create))
             {                
                 await JsonSerializer.SerializeAsync<List<Country>>(fs, dBModel.Countries, new JsonSerializerOptions { 
-                    WriteIndented = true,                    
+                    WriteIndented = true,   
+                    IgnoreNullValues = true,
                     Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping
                 });
                 Console.WriteLine("Data has been saved to file");

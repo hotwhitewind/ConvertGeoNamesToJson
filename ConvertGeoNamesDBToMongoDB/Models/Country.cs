@@ -7,7 +7,6 @@ namespace ConvertGeoNamesDBToMongoDB.Models
     [Serializable]
     public class Country
     {
-        public int Id { get; set; }
         public string CountryName { get; set; }
         public string CountryISOCode { get; set; }
         public List<State> States { get; set; }
