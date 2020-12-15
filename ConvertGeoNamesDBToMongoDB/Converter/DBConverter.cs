@@ -224,7 +224,23 @@ namespace ConvertGeoNamesDBToMongoDB.Converter
                 }
             }
             using (FileStream fs = new FileStream("resultDB.json", FileMode.Create))
-            {                
+            {
+                //sorting
+                dBModel.Countries.Sort((c, f) => c.CountryName.CompareTo(f.CountryName));
+                foreach (var country in dBModel.Countries)
+                {
+                    country.States?.Sort((c, f) => c.StateName.CompareTo(f.StateName));
+                    country.Cities?.Sort((c, f) => c.CityName.CompareTo(f.CityName));
+                    country.States?.ForEach(c =>
+                    {
+                        c.Districts?.Sort((f, g) => f.DistrictName.CompareTo(g.DistrictName));
+                        c.Cities?.Sort((f, g) => f.CityName.CompareTo(g.CityName));
+                        c.Districts?.ForEach(x =>
+                        {
+                            x.Cities?.Sort((f, g) => f.CityName.CompareTo(g.CityName));
+                        });
+                    });
+                }
                 await JsonSerializer.SerializeAsync<List<Country>>(fs, dBModel.Countries, new JsonSerializerOptions { 
                     WriteIndented = true,   
                     IgnoreNullValues = true,

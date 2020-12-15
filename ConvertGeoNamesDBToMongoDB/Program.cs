@@ -10,7 +10,7 @@ namespace ConvertGeoNamesDBToMongoDB
         {
             if (args.Length == 0)
             {
-                Console.WriteLine("usage: programm.exe initDbDirectory [citiesDBName]");
+                Console.WriteLine("usage: program.exe initDbDirectory [citiesDBName]");
                 return;
             }
 
